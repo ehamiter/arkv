@@ -9,6 +9,8 @@ use std::time::Instant;
 use walkdir::WalkDir;
 use crate::config::Destination;
 
+const BUFFER_SIZE: usize = 262_144;
+
 pub struct TransferStats {
     pub bytes_transferred: u64,
     pub duration_secs: f64,
@@ -69,6 +71,7 @@ impl Transferer {
                     .unwrap()
                     .progress_chars("#>-")
             );
+            pb.enable_steady_tick(std::time::Duration::from_millis(100));
 
             for entry in files {
                 let file_path = entry.path();
@@ -101,6 +104,29 @@ impl Transferer {
         }
         let tcp = TcpStream::connect(format!("{}:{}", self.destination.host, self.destination.port))
             .context("Failed to connect to server")?;
+
+        tcp.set_nodelay(true)
+            .context("Failed to set TCP_NODELAY")?;
+        
+        use std::os::unix::io::AsRawFd;
+        let fd = tcp.as_raw_fd();
+        unsafe {
+            let size: libc::c_int = 2_097_152;
+            libc::setsockopt(
+                fd,
+                libc::SOL_SOCKET,
+                libc::SO_SNDBUF,
+                &size as *const _ as *const libc::c_void,
+                std::mem::size_of::<libc::c_int>() as libc::socklen_t,
+            );
+            libc::setsockopt(
+                fd,
+                libc::SOL_SOCKET,
+                libc::SO_RCVBUF,
+                &size as *const _ as *const libc::c_void,
+                std::mem::size_of::<libc::c_int>() as libc::socklen_t,
+            );
+        }
 
         if self.verbose {
             eprintln!("Creating SSH session");
@@ -168,7 +194,7 @@ impl Transferer {
         let mut remote_file = sftp.create(Path::new(remote_path))
             .context(format!("Failed to create remote file: {}", remote_path))?;
 
-        let mut buffer = vec![0; 8192];
+        let mut buffer = vec![0; BUFFER_SIZE];
         let mut total_bytes = 0u64;
         loop {
             let bytes_read = local_file.read(&mut buffer)

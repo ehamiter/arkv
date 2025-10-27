@@ -1,6 +1,6 @@
 [package]
 name = "arkv"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 authors = ["Eric Hamiter <ehamiter@gmail.com>"]
 license = "MIT"
@@ -35,3 +35,4 @@ anyhow = "1.0"
 dialoguer = "0.11"
 dirs = "5.0"
 walkdir = "2.5"
+libc = "0.2"

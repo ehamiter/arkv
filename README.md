@@ -12,7 +12,13 @@ A fast, no-frills file archiving tool that copies files to remote servers via SF
 
 ## Installation
 
-Build from source:
+Install from crates.io:
+
+```bash
+cargo install arkv
+```
+
+Or build from source:
 
 ```bash
 cargo build --release
